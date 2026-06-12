@@ -1,13 +1,35 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
+
+REM ============================================================
+REM  RUN SCRIPT (Windows)
+REM  Generalised build script for a Java-based web framework.
+REM ============================================================
 
 pushd "%~dp0"
 
+REM --------------------------
+REM  CONFIGURATION (customise)
+REM --------------------------
 set "ROOT_DIR=%CD%"
+
+set "SRC_DIR=%ROOT_DIR%\src"
+set "RES_DIR=%ROOT_DIR%\src\WEB-INF"
 set "BUILD_DIR=%ROOT_DIR%\build"
 set "CLASSES_DIR=%BUILD_DIR%\WEB-INF\classes"
 set "LIB_DIR=%BUILD_DIR%\WEB-INF\lib"
 set "WEBAPPS_DIR=%BUILD_DIR%\WEB-INF\webapps"
+
+set "PACKAGES=controller model"
+
+set "SERVLET_JAR=%ROOT_DIR%\lib\servlet-api.jar"
+
+set "JAR_NAME=Framework"
+
+REM --------------------------
+REM  CLEAN & INIT BUILD DIR
+REM --------------------------
+echo === Cleaning and creating build directory ===
 
 if exist "%BUILD_DIR%" rmdir /s /q "%BUILD_DIR%"
 
@@ -15,13 +37,47 @@ mkdir "%CLASSES_DIR%"
 mkdir "%LIB_DIR%"
 mkdir "%WEBAPPS_DIR%"
 
-if exist "src\WEB-INF\" xcopy "src\WEB-INF\*" "%BUILD_DIR%\WEB-INF\" /E /I /Y /Q >nul
+REM --------------------------
+REM  COPY RESOURCES
+REM --------------------------
+echo === Copying WEB-INF resources ===
+if exist "%RES_DIR%\" (
+    xcopy "%RES_DIR%\*" "%BUILD_DIR%\WEB-INF\" /E /I /Y /Q >nul
+)
 
-if exist src\java\controller\*.java javac -d "%CLASSES_DIR%" src\java\controller\*.java
-if exist src\java\model\*.java javac -d "%CLASSES_DIR%" src\java\model\*.java
+REM --------------------------
+REM  COMPILE JAVA SOURCES
+REM --------------------------
+echo === Compiling Java sources ===
+for %%p in (%PACKAGES%) do (
+    if exist "%SRC_DIR%\java\%%p\*.java" (
+        echo   Compiling package: %%p
+        javac -cp "%SERVLET_JAR%" -d "%CLASSES_DIR%" "%SRC_DIR%\java\%%p\*.java"
+        if errorlevel 1 (
+            echo ERROR: Compilation failed for package %%p
+        ) else (
+            echo   OK
+        )
+    ) else (
+        echo   No .java files found in package: %%p
+    )
+)
 
-if exist "%CLASSES_DIR%\controller" jar cf "%LIB_DIR%\Framework.jar" -C "%CLASSES_DIR%" controller
+REM --------------------------
+REM  PACKAGE INTO JAR
+REM --------------------------
+echo === Creating JAR archive ===
+set "JAR_PATH=%LIB_DIR%\%JAR_NAME%.jar"
+if exist "%CLASSES_DIR%" (
+    jar cf "%JAR_PATH%" -C "%CLASSES_DIR%" .
+    if errorlevel 1 (
+        echo ERROR: JAR creation failed
+    ) else (
+        echo   JAR created at: %JAR_PATH%
+    )
+)
+
+echo === Done ===
 
 popd
-
 endlocal
