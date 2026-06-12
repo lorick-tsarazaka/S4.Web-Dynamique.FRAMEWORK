@@ -18,7 +18,7 @@ WEBAPPS_DIR="$BUILD_DIR/WEB-INF/webapps"
 
 PACKAGES="controller model"
 
-SERVLET_JAR="$ROOT_DIR/lib/servlet-api.jar"
+CP="$ROOT_DIR/lib/*"
 
 JAR_NAME="Framework"
 
@@ -40,7 +40,7 @@ for pkg in $PACKAGES; do
     pkg_dir="$SRC_DIR/java/$pkg"
     if [ -d "$pkg_dir" ] && ls "$pkg_dir/"*.java 2>/dev/null >/dev/null; then
         printf "  Compiling package: %s\n" "$pkg"
-        if javac -cp "$SERVLET_JAR" -d "$CLASSES_DIR" "$pkg_dir/"*.java; then
+        if (cd "$pkg_dir" && javac -cp "$CP" -d "$CLASSES_DIR" *.java); then
             echo "    OK"
         else
             echo "    ERROR: Compilation failed for package $pkg" >&2
@@ -53,8 +53,8 @@ done
 # ---- PACKAGE INTO JAR ----
 echo "=== Creating JAR archive ==="
 JAR_PATH="$LIB_DIR/$JAR_NAME.jar"
-if [ -d "$CLASSES_DIR" ]; then
-    if jar cf "$JAR_PATH" -C "$CLASSES_DIR" .; then
+if [ -d "$CLASSES_DIR/controller" ]; then
+    if jar cf "$JAR_PATH" -C "$CLASSES_DIR" controller; then
         echo "  JAR created at: $JAR_PATH"
     else
         echo "  ERROR: JAR creation failed" >&2
