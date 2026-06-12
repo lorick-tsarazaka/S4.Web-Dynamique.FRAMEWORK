@@ -22,7 +22,7 @@ set "WEBAPPS_DIR=%BUILD_DIR%\WEB-INF\webapps"
 
 set "PACKAGES=controller model"
 
-set "SERVLET_JAR=%ROOT_DIR%\lib\servlet-api.jar"
+set "CP=%ROOT_DIR%\lib\*"
 
 set "JAR_NAME=Framework"
 
@@ -52,12 +52,14 @@ echo === Compiling Java sources ===
 for %%p in (%PACKAGES%) do (
     if exist "%SRC_DIR%\java\%%p\*.java" (
         echo   Compiling package: %%p
-        javac -cp "%SERVLET_JAR%" -d "%CLASSES_DIR%" "%SRC_DIR%\java\%%p\*.java"
+        pushd "%SRC_DIR%\java\%%p"
+        javac -cp "%CP%" -d "%CLASSES_DIR%" *.java
         if errorlevel 1 (
             echo ERROR: Compilation failed for package %%p
         ) else (
             echo   OK
         )
+        popd
     ) else (
         echo   No .java files found in package: %%p
     )
@@ -68,8 +70,8 @@ REM  PACKAGE INTO JAR
 REM --------------------------
 echo === Creating JAR archive ===
 set "JAR_PATH=%LIB_DIR%\%JAR_NAME%.jar"
-if exist "%CLASSES_DIR%" (
-    jar cf "%JAR_PATH%" -C "%CLASSES_DIR%" .
+if exist "%CLASSES_DIR%\controller" (
+    jar cf "%JAR_PATH%" -C "%CLASSES_DIR%" controller
     if errorlevel 1 (
         echo ERROR: JAR creation failed
     ) else (
