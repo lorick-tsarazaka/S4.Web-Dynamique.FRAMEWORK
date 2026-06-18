@@ -7,23 +7,38 @@ import jakarta.servlet.http.*;
 import mg.itu.framework.annotation.Controller;
 import mg.itu.framework.util.ClassUtil;
 
+@Controller
 public class FrontControllerServlet extends HttpServlet {
     private List<String> listController = new ArrayList<>();
 
     // init
-    public void init() {
+    public void init() throws ServletException {
+        List<String> packageNames = new ArrayList<>();
+        packageNames.add("mg.itu.framework.controller");
+        packageNames.add("controller");
 
+        List<Class<?>> controllers = ClassUtil.getClassesWithAnnotation(packageNames, Controller.class);
+        for (Class<?> controller : controllers) {
+            listController.add(controller.getName());
+        }
     }
+    
     public void doGet(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
         res.setContentType("text/html");
         PrintWriter out = res.getWriter();
-        out.println(processRequest(req, res));
+        out.println(processRequest(req, res) + "<br>");
+        for (String controller : listController) {
+            out.println("- " + controller + "<br>");
+        }
     }
 
     public void doPost(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
         res.setContentType("text/html");
         PrintWriter out = res.getWriter();
-        out.println(processRequest(req, res));
+        out.println(processRequest(req, res) + "<br>");
+        for (String controller : listController) {
+            out.println("- " + controller + "<br>");
+        }
     }
 
 
@@ -34,7 +49,4 @@ public class FrontControllerServlet extends HttpServlet {
         return path;
     }
 
-    private boolean checkAnnotation(Class<?> clazz) {
-        return clazz.isAnnotationPresent(Controller.class);
-    }
 }

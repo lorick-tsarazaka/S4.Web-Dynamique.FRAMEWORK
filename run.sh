@@ -50,11 +50,20 @@ for pkg in $PACKAGES; do
     fi
 done
 
+# ---- EXTRACT CLASSES FROM LIB JARS ----
+echo "=== Extracting classes from dependency JARs ==="
+for jar in "$ROOT_DIR/lib/"*.jar; do
+    if [ -f "$jar" ]; then
+        printf "  Extracting: %s\n" "$(basename "$jar")"
+        (cd "$CLASSES_DIR" && jar xf "$jar" 2>/dev/null) || true
+    fi
+done
+
 # ---- PACKAGE INTO JAR ----
 echo "=== Creating JAR archive ==="
 JAR_PATH="$LIB_DIR/$JAR_NAME.jar"
-if [ -d "$CLASSES_DIR/controller" ]; then
-    if jar cf "$JAR_PATH" -C "$CLASSES_DIR" controller; then
+if [ -d "$CLASSES_DIR/mg" ]; then
+    if jar cf "$JAR_PATH" -C "$CLASSES_DIR" .; then
         echo "  JAR created at: $JAR_PATH"
     else
         echo "  ERROR: JAR creation failed" >&2

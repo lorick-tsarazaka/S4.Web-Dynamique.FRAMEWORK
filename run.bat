@@ -2,14 +2,13 @@
 setlocal enabledelayedexpansion
 
 REM ============================================================
-REM  RUN SCRIPT (Windows)
-REM  Build script for a Java-based web framework.
+REM  BUILD FRAMEWORK
 REM ============================================================
 
 pushd "%~dp0"
 
 REM --------------------------
-REM  VARIABLES
+REM VARIABLES
 REM --------------------------
 set "APP_NAME=Framework"
 set "SRC_DIR=src\java"
@@ -19,65 +18,95 @@ set "CLASSES_DIR=%BUILD_DIR%\WEB-INF\classes"
 set "LIB_DIR=%BUILD_DIR%\WEB-INF\lib"
 set "LIB=lib"
 
-REM ===========================
-REM  NETTOYAGE ET PREPARATION
-REM ===========================
 echo.
-echo Nettoyage du repertoire build...
+echo ===================================
+echo Nettoyage...
+echo ===================================
+
 if exist "%BUILD_DIR%" rmdir /s /q "%BUILD_DIR%"
+
 mkdir "%CLASSES_DIR%"
 mkdir "%LIB_DIR%"
 
-REM ===========================
-REM  COMPILATION DES FICHIERS JAVA
-REM ===========================
-echo Compilation des fichiers Java...
+echo.
+echo ===================================
+echo Compilation Java...
+echo ===================================
 
-REM Generer sources.txt en evitant le probleme des espaces avec subst
 subst B: "%CD%" >nul 2>&1
 
 dir /s /b "B:\%SRC_DIR%\*.java" > "%TEMP%\sources.txt"
 
 javac -cp "B:\%LIB%\*" -d "B:\%CLASSES_DIR%" @"%TEMP%\sources.txt"
+
 set "RESULT=%ERRORLEVEL%"
 
 del "%TEMP%\sources.txt" 2>nul
 subst B: /d >nul 2>&1
 
 if %RESULT% neq 0 (
-    echo ERREUR: Echec de la compilation
+    echo.
+    echo ERREUR : Compilation echouee.
     popd
     pause
-    endlocal
     exit /b 1
 )
 
-REM ===========================
-REM  COPIER LES FICHIERS WEB
-REM ===========================
-echo Copie des fichiers web...
-if exist "%WEB_DIR%\" (
+echo.
+echo ===================================
+echo Copie des ressources Web...
+echo ===================================
+
+if exist "%WEB_DIR%" (
     xcopy "%WEB_DIR%\*" "%BUILD_DIR%\" /E /I /Y /Q >nul
 )
 
-REM ===========================
-REM  GENERER LE JAR
-REM ===========================
-echo Creation du fichier JAR...
-set "JAR_PATH=%LIB_DIR%\%APP_NAME%.jar"
-if exist "%CLASSES_DIR%\mg\itu\framework" (
-    jar cf "%JAR_PATH%" -C "%CLASSES_DIR%" mg
-    if errorlevel 1 (
-        echo ERREUR: Echec de la creation du JAR
-    ) else (
-        echo JAR cree: %JAR_PATH%
+echo.
+echo ===================================
+echo Extraction des JARs...
+echo ===================================
+
+for %%j in ("%LIB%\*.jar") do (
+
+    if exist "%%~fj" (
+
+        echo Extraction de %%~nxj
+
+        REM Ignorer servlet-api.jar si souhaite
+        REM if /i not "%%~nxj"=="servlet-api.jar" (
+
+        pushd "%CLASSES_DIR%"
+        jar xf "%%~fj"
+        popd
+
+        REM )
+
     )
 )
 
 echo.
 echo ===================================
-echo Build termine
+echo Creation du Framework.jar...
+echo ===================================
+
+jar cf "%LIB_DIR%\%APP_NAME%.jar" -C "%CLASSES_DIR%" .
+
+if errorlevel 1 (
+    echo ERREUR : Creation du JAR impossible.
+    popd
+    pause
+    exit /b 1
+)
+
+echo.
+echo JAR cree :
+echo %LIB_DIR%\%APP_NAME%.jar
+
+echo.
+echo ===================================
+echo BUILD TERMINE
 echo ===================================
 
 popd
+pause
 endlocal
