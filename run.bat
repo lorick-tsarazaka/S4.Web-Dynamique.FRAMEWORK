@@ -2,84 +2,111 @@
 setlocal enabledelayedexpansion
 
 REM ============================================================
-REM  RUN SCRIPT (Windows)
-REM  Generalised build script for a Java-based web framework.
+REM  BUILD FRAMEWORK
 REM ============================================================
 
 pushd "%~dp0"
 
 REM --------------------------
-REM  CONFIGURATION (customise)
+REM VARIABLES
 REM --------------------------
-set "ROOT_DIR=%CD%"
-
-set "SRC_DIR=%ROOT_DIR%\src"
-set "RES_DIR=%ROOT_DIR%\src\WEB-INF"
-set "BUILD_DIR=%ROOT_DIR%\build"
+set "APP_NAME=Framework"
+set "SRC_DIR=src\java"
+set "WEB_DIR=src\webapps"
+set "BUILD_DIR=build"
 set "CLASSES_DIR=%BUILD_DIR%\WEB-INF\classes"
 set "LIB_DIR=%BUILD_DIR%\WEB-INF\lib"
-set "WEBAPPS_DIR=%BUILD_DIR%\WEB-INF\webapps"
+set "LIB=lib"
 
-set "PACKAGES=controller model"
-
-set "CP=%ROOT_DIR%\lib\*"
-
-set "JAR_NAME=Framework"
-
-REM --------------------------
-REM  CLEAN & INIT BUILD DIR
-REM --------------------------
-echo === Cleaning and creating build directory ===
+echo.
+echo ===================================
+echo Nettoyage...
+echo ===================================
 
 if exist "%BUILD_DIR%" rmdir /s /q "%BUILD_DIR%"
 
 mkdir "%CLASSES_DIR%"
 mkdir "%LIB_DIR%"
-mkdir "%WEBAPPS_DIR%"
 
-REM --------------------------
-REM  COPY RESOURCES
-REM --------------------------
-echo === Copying WEB-INF resources ===
-if exist "%RES_DIR%\" (
-    xcopy "%RES_DIR%\*" "%BUILD_DIR%\WEB-INF\" /E /I /Y /Q >nul
+echo.
+echo ===================================
+echo Compilation Java...
+echo ===================================
+
+subst B: "%CD%" >nul 2>&1
+
+dir /s /b "B:\%SRC_DIR%\*.java" > "%TEMP%\sources.txt"
+
+javac -cp "B:\%LIB%\*" -d "B:\%CLASSES_DIR%" @"%TEMP%\sources.txt"
+
+set "RESULT=%ERRORLEVEL%"
+
+del "%TEMP%\sources.txt" 2>nul
+subst B: /d >nul 2>&1
+
+if %RESULT% neq 0 (
+    echo.
+    echo ERREUR : Compilation echouee.
+    popd
+    pause
+    exit /b 1
 )
 
-REM --------------------------
-REM  COMPILE JAVA SOURCES
-REM --------------------------
-echo === Compiling Java sources ===
-for %%p in (%PACKAGES%) do (
-    if exist "%SRC_DIR%\java\%%p\*.java" (
-        echo   Compiling package: %%p
-        pushd "%SRC_DIR%\java\%%p"
-        javac -cp "%CP%" -d "%CLASSES_DIR%" *.java
-        if errorlevel 1 (
-            echo ERROR: Compilation failed for package %%p
-        ) else (
-            echo   OK
-        )
+echo.
+echo ===================================
+echo Copie des ressources Web...
+echo ===================================
+
+if exist "%WEB_DIR%" (
+    xcopy "%WEB_DIR%\*" "%BUILD_DIR%\" /E /I /Y /Q >nul
+)
+
+echo.
+echo ===================================
+echo Extraction des JARs...
+echo ===================================
+
+for %%j in ("%LIB%\*.jar") do (
+
+    if exist "%%~fj" (
+
+        echo Extraction de %%~nxj
+
+        REM Ignorer servlet-api.jar si souhaite
+        REM if /i not "%%~nxj"=="servlet-api.jar" (
+
+        pushd "%CLASSES_DIR%"
+        jar xf "%%~fj"
         popd
-    ) else (
-        echo   No .java files found in package: %%p
+
+        REM )
+
     )
 )
 
-REM --------------------------
-REM  PACKAGE INTO JAR
-REM --------------------------
-echo === Creating JAR archive ===
-set "JAR_PATH=%LIB_DIR%\%JAR_NAME%.jar"
-if exist "%CLASSES_DIR%\controller" (
-    jar cf "%JAR_PATH%" -C "%CLASSES_DIR%" controller
-    if errorlevel 1 (
-        echo ERROR: JAR creation failed
-    ) else (
-        echo   JAR created at: %JAR_PATH%
-    )
+echo.
+echo ===================================
+echo Creation du Framework.jar...
+echo ===================================
+
+jar cf "%LIB_DIR%\%APP_NAME%.jar" -C "%CLASSES_DIR%" .
+
+if errorlevel 1 (
+    echo ERREUR : Creation du JAR impossible.
+    popd
+    pause
+    exit /b 1
 )
 
-echo === Done ===
+echo.
+echo JAR cree :
+echo %LIB_DIR%\%APP_NAME%.jar
+
+echo.
+echo ===================================
+echo BUILD TERMINE
+echo ===================================
 
 popd
+pause
 endlocal
