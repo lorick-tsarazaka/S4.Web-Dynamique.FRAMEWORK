@@ -5,6 +5,7 @@ import jakarta.servlet.*;
 import java.util.*;
 import jakarta.servlet.http.*;
 import mg.itu.framework.annotation.Controller;
+import mg.itu.framework.annotation.UrlMapping;
 import mg.itu.framework.util.ClassUtil;
 
 @Controller
