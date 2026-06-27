@@ -30,13 +30,13 @@ public class FrontControllerServlet extends HttpServlet {
         res.setContentType("text/html");
         PrintWriter out = res.getWriter();
         String url = processRequest(req, res);
-        out.println("URL : " + url + "<br><br>");
-        getUrlMapping(url, out);
-
-        out.println("<br><br>Liste des classes contrôleurs : <br>");
+        out.println("URL : " + url + "<br>");
+        out.println("<br>Liste des classes contrôleurs : <br>");
         for (String controller : listController) {
             out.println("- " + controller + "<br>");
         }
+        out.println("<br>");
+        getUrlMapping(url, out);
     }
 
     public void doPost(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
@@ -50,20 +50,8 @@ public class FrontControllerServlet extends HttpServlet {
             path += "/" + urlParts[i];
         }
         
-        return removeDoubleSlash(path);
+        return path;
         
-    }
-
-    private String removeDoubleSlash (String url){
-        String retour = "";
-        String[] parts = url.split("/");
-        for(int i = 1 ; i < parts.length ; i++){
-            if(parts[i].length() != 0){
-                retour += "/" + parts[i];
-            }
-        }
-
-        return retour;
     }
 
     private boolean isUrlAccessible(String urlName) {
