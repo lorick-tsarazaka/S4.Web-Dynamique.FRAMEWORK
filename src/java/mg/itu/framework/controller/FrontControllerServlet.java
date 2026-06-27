@@ -5,13 +5,13 @@ import jakarta.servlet.*;
 import java.util.*;
 import jakarta.servlet.http.*;
 import mg.itu.framework.annotation.Controller;
-import mg.itu.framework.annotation.UrlMapping;
 import mg.itu.framework.util.ClassUtil;
+import mg.itu.framework.util.MethodClassMapping;
 
 @Controller
 public class FrontControllerServlet extends HttpServlet {
     private List<String> listController = new ArrayList<>();
-    private Map<String, List<List<String>>> listUrlMapping = new HashMap<>();
+    private Map<String, MethodClassMapping> listUrlMapping = new HashMap<>();
 
     // init
     public void init() throws ServletException {
@@ -19,11 +19,10 @@ public class FrontControllerServlet extends HttpServlet {
         packageNames.add("mg.itu.framework.controller");
         packageNames.add("controller");
 
-        List<Class<?>> controllers = ClassUtil.getClassesWithAnnotation(packageNames, Controller.class);
+        List<Class<?>> controllers = ClassUtil.getClassesWithAnnotation(packageNames, listUrlMapping, Controller.class);
         for (Class<?> controller : controllers) {
             listController.add(controller.getName());
         }
-        listUrlMapping = ClassUtil.getUrlMappings(controllers, UrlMapping.class);
 
     }
     
@@ -32,21 +31,16 @@ public class FrontControllerServlet extends HttpServlet {
         PrintWriter out = res.getWriter();
         String url = processRequest(req, res);
         out.println("URL : " + url + "<br><br>");
-        // for (String controller : listController) {
-        //     out.println("- " + controller + "<br>");
-        // }
         getUrlMapping(url, out);
-    }
 
-    public void doPost(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
-        res.setContentType("text/html");
-        PrintWriter out = res.getWriter();
-        out.println("URL : " + processRequest(req, res) + "<br><br>");
+        out.println("<br><br>Liste des classes contrôleurs : <br>");
         for (String controller : listController) {
             out.println("- " + controller + "<br>");
         }
     }
 
+    public void doPost(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
+    }
 
     private String processRequest(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
         String url = req.getRequestURL().toString();
@@ -56,42 +50,62 @@ public class FrontControllerServlet extends HttpServlet {
             path += "/" + urlParts[i];
         }
         
-        return path;
+        return removeDoubleSlash(path);
         
     }
 
-    private boolean isUrlAccessible(String url) {
-        for (String controller : listUrlMapping.keySet()) {
-            List<List<String>> mappings = listUrlMapping.get(controller);
-            for (List<String> mappingInfo : mappings) {
-                if (mappingInfo.get(1).equals(url)) {
-                    return true;
-                }
+    private String removeDoubleSlash (String url){
+        String retour = "";
+        String[] parts = url.split("/");
+        for(int i = 1 ; i < parts.length ; i++){
+            if(parts[i].length() != 0){
+                retour += "/" + parts[i];
+            }
+        }
+
+        return retour;
+    }
+
+    private boolean isUrlAccessible(String urlName) {
+        for (String url : listUrlMapping.keySet()) {
+            if (url.equals(urlName)) {
+                return true;
             }
         }
         return false;
     }
 
-    private void getUrlMapping(String url , PrintWriter out) {
-        if(isUrlAccessible(url)) {
-            for (String controller : listUrlMapping.keySet()) {
-                List<List<String>> mappings = listUrlMapping.get(controller);
-                for (List<String> mappingInfo : mappings) {
-                    if (mappingInfo.get(1).equals(url)) {
-                        out.println("- " + controller + " -> ");
-                        out.println(mappingInfo.get(0)  + " : " + mappingInfo.get(1) + "<br>");
-                    }
-                }
-            }
-        } else {
+    private void getUrlMapping(String urlName , PrintWriter out) {
+        boolean accessible = isUrlAccessible(urlName);
+        boolean isBreak = false;
+        if(!accessible){
             out.println("L'URL n'est pas accessible , voici la liste des URL accessibles : <br>");
-            for (String controller : listUrlMapping.keySet()) {
-                List<List<String>> mappings = listUrlMapping.get(controller);
-                for (List<String> mappingInfo : mappings) {
-                    out.println("- " + controller + " -> ");
-                    out.println(mappingInfo.get(0)  + " : " + mappingInfo.get(1) + "<br>");
+        }
+        out.println("<table border='1'>");
+        out.println("<tr><th>URL</th><th>Classe</th><th>Méthode</th></tr>");
+        for (String url : listUrlMapping.keySet()) {
+            MethodClassMapping mapping = listUrlMapping.get(url);
+            if (mapping != null) {
+                if(accessible) {
+                    if (url.equals(urlName)) {
+                        out.println("<tr><td>" + url + "</td><td>");
+                        out.println(mapping.getClasse().getName() + "</td><td>");
+                        out.println(mapping.getMethode().getName() + "</td></tr>");
+                        isBreak = true;
+                        break;
+                    }
+                } else {
+                    out.println("<tr><td>" + url + "</td><td>");
+                    out.println(mapping.getClasse().getName() + "</td><td>");
+                    out.println(mapping.getMethode().getName() + "</td></tr>");
                 }
             }
+            if (isBreak) {
+                break;
+            }
+        }
+        if(listUrlMapping.size() == 0){
+            out.println("<tr><td colspan=\"3\">Aucune URL a été trouvée</td></tr>");
         }
     }
 
