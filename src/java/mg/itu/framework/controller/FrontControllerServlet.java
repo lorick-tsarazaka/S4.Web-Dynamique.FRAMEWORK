@@ -74,6 +74,15 @@ public class FrontControllerServlet extends HttpServlet {
         return false;
     }
 
+    private void invokeMethod(MethodClassMapping mapping) {
+        try {
+            Object instance = mapping.getClasse().getDeclaredConstructor().newInstance();
+            mapping.getMethode().invoke(instance);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     private void getUrlMapping(String urlName , PrintWriter out , HttpServletRequest req) {
         String method = req.getMethod();
         boolean accessible = isUrlAccessible(urlName , method);
@@ -88,6 +97,7 @@ public class FrontControllerServlet extends HttpServlet {
             MethodClassMapping mapping = listUrlMapping.get(url);
             if (mapping != null) {
                 if(accessible) {
+                    invokeMethod(mapping);
                     if (url.getUrl().equals(urlName) && url.getMethod().equals(method)) {
                         out.println("<tr><td>" + url.getUrl() + " (" + url.getMethod() + ")</td><td>");
                         out.println(mapping.getClasse().getName() + "</td><td>");
