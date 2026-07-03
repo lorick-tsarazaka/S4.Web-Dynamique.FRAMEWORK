@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
 
+
 import java.lang.annotation.Annotation;
 
 public class ClassUtil {
@@ -24,12 +25,14 @@ public class ClassUtil {
             if (clazz.isAnnotationPresent(annotation)) {
                 result.add(clazz);
                 for (Method method : clazz.getDeclaredMethods()) {
-                    if (method.isAnnotationPresent(UrlMapping.class)) {
+                    if (method.isAnnotationPresent(UrlMapping.class)) { 
                         UrlMapping urlMapping = method.getAnnotation(UrlMapping.class);
                         String url = urlMapping.url();
                         String methode = urlMapping.method();
                         MethodClassMapping mapping = new MethodClassMapping(clazz, method);
-                        urlMappings.put(new UrlMethod(url, methode), mapping);
+                        UrlMethod urlMethod = new UrlMethod(url, methode);
+                        if(urlMappings.containsKey(urlMethod)) throw new RuntimeException("URL "+ url + " (" + methode +")" + "existe deja.");
+                        urlMappings.put(urlMethod, mapping);
                     }
                 }
             }
