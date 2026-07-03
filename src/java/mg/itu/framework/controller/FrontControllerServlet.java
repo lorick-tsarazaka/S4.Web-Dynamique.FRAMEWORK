@@ -5,7 +5,6 @@ import jakarta.servlet.*;
 import java.util.*;
 import jakarta.servlet.http.*;
 import mg.itu.framework.annotation.Controller;
-import mg.itu.framework.util.ClassUtil;
 import mg.itu.framework.util.MethodClassMapping;
 import mg.itu.framework.util.UrlMethod;
 
@@ -15,16 +14,19 @@ public class FrontControllerServlet extends HttpServlet {
     private Map<UrlMethod, MethodClassMapping> listUrlMapping = new HashMap<>();
 
     // init
+    @SuppressWarnings("unchecked")
     public void init() throws ServletException {
-        List<String> packageNames = new ArrayList<>();
-        packageNames.add("mg.itu.framework.controller");
-        packageNames.add("controller");
-
-        List<Class<?>> controllers = ClassUtil.getClassesWithAnnotation(packageNames, listUrlMapping, Controller.class);
-        for (Class<?> controller : controllers) {
-            listController.add(controller.getName());
+        ServletContext context = getServletContext();
+        
+        List<String> controllersFromContext = (List<String>) context.getAttribute("listController");
+        if (controllersFromContext != null) {
+            this.listController = controllersFromContext;
         }
-
+        
+        Map<UrlMethod, MethodClassMapping> mappingsFromContext = (Map<UrlMethod, MethodClassMapping>) context.getAttribute("listUrlMapping");
+        if (mappingsFromContext != null) {
+            this.listUrlMapping = mappingsFromContext;
+        }
     }
     
     public void doGet(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
@@ -60,9 +62,7 @@ public class FrontControllerServlet extends HttpServlet {
         for (int i = 4 ; i < urlParts.length; i++) {
             path += "/" + urlParts[i];
         }
-        
         return path;
-        
     }
 
     private boolean isUrlAccessible(String urlName , String method) {
@@ -97,8 +97,8 @@ public class FrontControllerServlet extends HttpServlet {
             MethodClassMapping mapping = listUrlMapping.get(url);
             if (mapping != null) {
                 if(accessible) {
-                    invokeMethod(mapping);
                     if (url.getUrl().equals(urlName) && url.getMethod().equals(method)) {
+                        invokeMethod(mapping);
                         out.println("<tr><td>" + url.getUrl() + " (" + url.getMethod() + ")</td><td>");
                         out.println(mapping.getClasse().getName() + "</td><td>");
                         out.println(mapping.getMethode().getName() + "</td></tr>");

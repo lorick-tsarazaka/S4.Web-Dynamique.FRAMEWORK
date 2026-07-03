@@ -1,6 +1,5 @@
 package mg.itu.framework.util;
 
-import java.lang.reflect.Method;
 import java.util.Objects;
 
 public class UrlMethod {
