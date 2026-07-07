@@ -20,8 +20,8 @@ public class FrontControllerServlet extends HttpServlet {
     @SuppressWarnings("unchecked")
     public void init() throws ServletException {
         ServletContext context = getServletContext();
-        this.prefix = context.getInitParameter("prefix");
-        this.suffix = context.getInitParameter("suffix");
+        this.prefix = (String) context.getAttribute("prefix");
+        this.suffix = (String) context.getAttribute("suffix");
         
         List<String> controllersFromContext = (List<String>) context.getAttribute("listController");
         if (controllersFromContext != null) {

@@ -47,6 +47,9 @@ public class AppStartUpListener implements ServletContextListener {
 
             sce.getServletContext().setAttribute("listController", listController);
             sce.getServletContext().setAttribute("listUrlMapping", listUrlMapping);
+            sce.getServletContext().setAttribute("prefix", sce.getServletContext().getInitParameter("prefix"));
+            sce.getServletContext().setAttribute("suffix", sce.getServletContext().getInitParameter("suffix"));
+            
 
             System.out.println("Application initialisée avec succès.");
 
