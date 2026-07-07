@@ -9,9 +9,9 @@ import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
 import jakarta.servlet.annotation.WebListener;
 import mg.itu.framework.annotation.Controller;
+import mg.itu.framework.model.MethodClassMapping;
+import mg.itu.framework.model.UrlMethod;
 import mg.itu.framework.util.ClassUtil;
-import mg.itu.framework.util.MethodClassMapping;
-import mg.itu.framework.util.UrlMethod;
 
 @WebListener
 public class AppStartUpListener implements ServletContextListener {

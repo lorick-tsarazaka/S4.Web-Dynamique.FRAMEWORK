@@ -4,6 +4,9 @@ import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ClassInfo;
 import io.github.classgraph.ScanResult;
 import mg.itu.framework.annotation.UrlMapping;
+import mg.itu.framework.model.MethodClassMapping;
+import mg.itu.framework.model.UrlMethod;
+
 import java.lang.reflect.Method;
 
 import java.util.List;
@@ -31,7 +34,11 @@ public class ClassUtil {
                         String methode = urlMapping.method();
                         MethodClassMapping mapping = new MethodClassMapping(clazz, method);
                         UrlMethod urlMethod = new UrlMethod(url, methode);
-                        if(urlMappings.containsKey(urlMethod)) throw new RuntimeException("URL "+ url + " (" + methode +")" + "existe deja.");
+                        if(urlMappings.containsKey(urlMethod)) {
+                            System.out.println("----------------------------------------------");
+                            System.out.println("URL "+ url + " (" + methode +")" + "existe deja.");
+                            throw new RuntimeException("URL "+ url + " (" + methode +")" + "existe deja.");
+                        }
                         urlMappings.put(urlMethod, mapping);
                     }
                 }
