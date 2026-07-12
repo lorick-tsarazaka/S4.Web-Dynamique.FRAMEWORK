@@ -1,4 +1,4 @@
-package mg.itu.framework.util;
+package mg.itu.framework.model;
 
 import java.util.Objects;
 
