@@ -66,22 +66,53 @@ echo ===================================
 echo Extraction des JARs...
 echo ===================================
 
+REM 1) Extraire tous les JARs dans CLASSES_DIR (classes + META-INF)
 for %%j in ("%LIB%\*.jar") do (
-
     if exist "%%~fj" (
-
         echo Extraction de %%~nxj
-
-        REM Ignorer servlet-api.jar si souhaite
-        REM if /i not "%%~nxj"=="servlet-api.jar" (
-
         pushd "%CLASSES_DIR%"
         jar xf "%%~fj"
         popd
-
-        REM )
-
     )
+)
+
+REM 2) Fusionner les fichiers SPI Spring (spring.handlers + spring.schemas)
+REM    pour eviter que le dernier JAR extrait ecrase les precedents.
+set "SPRING_HANDLERS=%TEMP%\spring.handlers.merged"
+set "SPRING_SCHEMAS=%TEMP%\spring.schemas.merged"
+if exist "%SPRING_HANDLERS%" del "%SPRING_HANDLERS%"
+if exist "%SPRING_SCHEMAS%" del "%SPRING_SCHEMAS%"
+
+for %%j in ("%LIB%\*.jar") do (
+    if exist "%%~fj" (
+        mkdir "%TEMP%\spring-merge" 2>nul
+        pushd "%TEMP%\spring-merge"
+        jar xf "%%~fj" 2>nul
+        if exist "META-INF\spring.handlers" (
+            type "META-INF\spring.handlers" >> "%SPRING_HANDLERS%"
+            echo. >> "%SPRING_HANDLERS%"
+        )
+        if exist "META-INF\spring.schemas" (
+            type "META-INF\spring.schemas" >> "%SPRING_SCHEMAS%"
+            echo. >> "%SPRING_SCHEMAS%"
+        )
+        popd
+        rmdir /s /q "%TEMP%\spring-merge" 2>nul
+    )
+)
+
+REM 3) Copier les fichiers fusionnes dans CLASSES_DIR (ecrase les fichiers partiels)
+if exist "%SPRING_HANDLERS%" (
+    if not exist "%CLASSES_DIR%\META-INF" mkdir "%CLASSES_DIR%\META-INF"
+    copy /Y "%SPRING_HANDLERS%" "%CLASSES_DIR%\META-INF\spring.handlers" >nul
+    echo Fichier spring.handlers fusionne.
+    del "%SPRING_HANDLERS%"
+)
+if exist "%SPRING_SCHEMAS%" (
+    if not exist "%CLASSES_DIR%\META-INF" mkdir "%CLASSES_DIR%\META-INF"
+    copy /Y "%SPRING_SCHEMAS%" "%CLASSES_DIR%\META-INF\spring.schemas" >nul
+    echo Fichier spring.schemas fusionne.
+    del "%SPRING_SCHEMAS%"
 )
 
 echo.
