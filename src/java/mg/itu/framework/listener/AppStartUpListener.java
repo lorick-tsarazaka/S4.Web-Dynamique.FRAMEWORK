@@ -1,13 +1,18 @@
 package mg.itu.framework.listener;
 
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletContextEvent;
+import jakarta.servlet.ServletContextListener;
+import jakarta.servlet.annotation.WebListener;
+
+import org.springframework.context.ApplicationContext;
+import org.springframework.web.context.support.WebApplicationContextUtils;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import jakarta.servlet.ServletContextEvent;
-import jakarta.servlet.ServletContextListener;
-import jakarta.servlet.annotation.WebListener;
 import mg.itu.framework.annotation.Controller;
 import mg.itu.framework.model.MethodClassMapping;
 import mg.itu.framework.model.UrlMethod;
@@ -16,52 +21,46 @@ import mg.itu.framework.util.ClassUtil;
 @WebListener
 public class AppStartUpListener implements ServletContextListener {
 
-    private final List<String> listController = new ArrayList<>();
-    private final Map<UrlMethod, MethodClassMapping> listUrlMapping = new HashMap<>();
-
     @Override
     public void contextInitialized(ServletContextEvent sce) {
-
         try {
+            ServletContext context = sce.getServletContext();
+            ApplicationContext springContext = WebApplicationContextUtils.getWebApplicationContext(context);
 
-            String packageName = sce.getServletContext().getInitParameter("packageNames");
+            if (springContext == null) {
+                throw new RuntimeException("Le contexte Spring n'a pas pu être récupéré. ");
+            }
+
+            String packageName = context.getInitParameter("packageNames");
+            String prefix = context.getInitParameter("prefix");
+            String suffix = context.getInitParameter("suffix");
 
             if (packageName == null || packageName.trim().isEmpty()) {
-                throw new RuntimeException(
-                        "Le context-param 'packageNames' est introuvable dans web.xml.");
+                throw new RuntimeException("Le context-param 'packageNames' est introuvable dans web.xml.");
             }
 
             List<String> packageNames = List.of(packageName.split(";"));
-
-            System.out.println("Packages scannés : " + packageNames);
+            List<String> listController = new ArrayList<>();
+            Map<UrlMethod, MethodClassMapping> listUrlMapping = new HashMap<>();
 
             List<Class<?>> controllers = ClassUtil.getClassesWithAnnotation(
                     packageNames,
                     listUrlMapping,
                     Controller.class);
 
-            for (Class<?> controller : controllers) {
-                listController.add(controller.getName());
-                System.out.println("Controller trouvé : " + controller.getName());
-            }
+            context.setAttribute("listController", listController);
+            context.setAttribute("listUrlMapping", listUrlMapping);
+            context.setAttribute("prefix", prefix);
+            context.setAttribute("suffix", suffix);
+            context.setAttribute("springContext", springContext);
 
-            sce.getServletContext().setAttribute("listController", listController);
-            sce.getServletContext().setAttribute("listUrlMapping", listUrlMapping);
-            sce.getServletContext().setAttribute("prefix", sce.getServletContext().getInitParameter("prefix"));
-            sce.getServletContext().setAttribute("suffix", sce.getServletContext().getInitParameter("suffix"));
-            
-
-            System.out.println("Application initialisée avec succès.");
-
-        } catch (Throwable e) {
-            System.err.println("Erreur lors de l'initialisation de l'application :");
-            e.printStackTrace();
+        } catch (Exception e) {
             throw new RuntimeException(e);
+
         }
     }
 
     @Override
     public void contextDestroyed(ServletContextEvent sce) {
-        System.out.println("Application arrêtée !");
     }
 }
