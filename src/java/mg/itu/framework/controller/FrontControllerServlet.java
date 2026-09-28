@@ -12,6 +12,8 @@ import mg.itu.framework.annotation.Controller;
 import mg.itu.framework.model.MethodClassMapping;
 import mg.itu.framework.model.UrlMethod;
 import mg.itu.framework.model.ModelAndView;
+import mg.itu.framework.annotation.WebApi;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Controller
 public class FrontControllerServlet extends HttpServlet {
@@ -65,14 +67,11 @@ public class FrontControllerServlet extends HttpServlet {
         processRequest(req, res);
     }
 
-    private void processRequest(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
-        res.setContentType("text/html");
-        PrintWriter out = res.getWriter();
+    private void processRequest(HttpServletRequest req, HttpServletResponse res)
+            throws ServletException, IOException {
 
         String uri = req.getRequestURI();
         String path = uri.substring(req.getContextPath().length());
-
-        out.println("URL : " + path + "<br>");
 
         String method = req.getMethod();
         MethodClassMapping mapping = getMapping(path, method);
@@ -80,20 +79,40 @@ public class FrontControllerServlet extends HttpServlet {
         if (mapping != null) {
             invokeMethod(mapping, req, res);
         } else {
-            out.println("Aucune correspondance trouvée pour l'URL : " + path + "<br>");
+            res.setContentType("text/html");
+            res.setCharacterEncoding("UTF-8");
+
+            PrintWriter out = res.getWriter();
+
+            out.println("URL : " + path + "<br>");
+
+            out.println("Aucune correspondance trouvée pour l'URL : "
+                    + path + "<br>");
+
             out.println("<br>Liste des URL disponibles : <br>");
             out.println("<table border='1'>");
             out.println("<tr><th>URL</th><th>Classe</th><th>Méthode</th></tr>");
-            for (Map.Entry<UrlMethod, MethodClassMapping> entry : listUrlMapping.entrySet()) {
+
+            for (Map.Entry<UrlMethod, MethodClassMapping> entry
+                    : listUrlMapping.entrySet()) {
+
                 UrlMethod url = entry.getKey();
                 MethodClassMapping m = entry.getValue();
-                out.println("<tr><td>" + url.getUrl() + " (" + url.getMethod() + ")</td><td>");
+
+                out.println("<tr><td>"
+                        + url.getUrl()
+                        + " (" + url.getMethod() + ")</td><td>");
+
                 out.println(m.getClasse().getName() + "</td><td>");
-                out.println(m.getMethode().getName() + "</td></tr>");
+
+                out.println(m.getMethode().getName()
+                        + "</td></tr>");
             }
+
             out.println("</table>");
 
             out.println("<br>Liste des classes contrôleurs : <br>");
+
             for (String controller : listController) {
                 out.println("- " + controller + "<br>");
             }
@@ -128,8 +147,25 @@ public class FrontControllerServlet extends HttpServlet {
                         " a des paramètres non supportés.");
                 return;
             }
+            if (mapping.getMethode().isAnnotationPresent(WebApi.class)) {
 
-            if (result instanceof ModelAndView) {
+                res.setContentType("application/json");
+                res.setCharacterEncoding("UTF-8");
+
+                PrintWriter jsonWriter = res.getWriter();
+
+                if (result instanceof String) {
+                    jsonWriter.println((String) result);
+
+                } else {
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    String json = objectMapper.writeValueAsString(result);
+
+                    jsonWriter.println(json);
+                }
+
+            }
+            else if (result instanceof ModelAndView) {
                 ModelAndView modelAndView = (ModelAndView) result;
                 for (Map.Entry<String, Object> entry : modelAndView.getModel().entrySet()) {
                     req.setAttribute(entry.getKey(), entry.getValue());
