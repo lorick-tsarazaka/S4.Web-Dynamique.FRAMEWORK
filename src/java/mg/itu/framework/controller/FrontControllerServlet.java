@@ -1,6 +1,7 @@
 package mg.itu.framework.controller;
 
 import java.io.*;
+import java.lang.reflect.Parameter;
 import java.util.*;
 
 import jakarta.servlet.*;
@@ -134,13 +135,13 @@ public class FrontControllerServlet extends HttpServlet {
         try {
             Object instance = mapping.getClasse().getDeclaredConstructor().newInstance();
 
-            Class<?>[] parameterTypes = mapping.getMethode().getParameterTypes();
+            Parameter[] parameters = mapping.getMethode().getParameters();  
             Object result;
 
-            if (parameterTypes.length == 0) {
+            if (parameters.length == 0) {
                 result = mapping.getMethode().invoke(instance);
             } else {
-                Object[] args = getArgs(springContext, parameterTypes, req);
+                Object[] args = getArgs(springContext, parameters, req);
                 result = mapping.getMethode().invoke(instance, args);
             }
             if (mapping.getMethode().isAnnotationPresent(WebApi.class)) {
@@ -180,40 +181,27 @@ public class FrontControllerServlet extends HttpServlet {
         }
     }
 
-    private Object[] getArgs(ApplicationContext springContext , Class<?>[] parameterTypes , HttpServletRequest req){
-        Enumeration<String> parameterNames = req.getParameterNames();
+    private Object[] getArgs(ApplicationContext springContext, Parameter[] parameters, HttpServletRequest req) {
         List<Object> args = new ArrayList<>();
+        for (Parameter parameter : parameters) {
+            Class<?> parameterType = parameter.getType();
 
-        for (Class<?> parameterType : parameterTypes) {
             if (parameterType == ApplicationContext.class) {
                 args.add(springContext);
-            } else {
-                boolean found = false;
-                while (parameterNames.hasMoreElements()) {
-                    String paramName = parameterNames.nextElement();
-                    String paramValue = req.getParameter(paramName);
-                    if (paramValue != null) {
-                        Object convertedValue = convertParameter(paramValue, parameterType, springContext);
-                        if (convertedValue != null) {
-                            args.add(convertedValue);
-                            found = true;
-                            break;
-                        }
-                    }
-                }
-                if (!found) {
-                    args.add(null);
-                }
+                continue;
             }
+            String parameterName = parameter.getName();
+            String parameterValue = req.getParameter(parameterName);
+            Object convertedValue = convertParameter(parameterValue, parameterType);
+
+            args.add(convertedValue);
         }
 
         return args.toArray();
     }
 
-    private Object convertParameter(String value, Class<?> targetType , ApplicationContext springContext) {
-        if (targetType == ApplicationContext.class) {
-            return springContext;
-        } else if (targetType == String.class) {
+    private Object convertParameter(String value, Class<?> targetType) {
+        if (targetType == String.class) {
             return value;
         } else if (targetType == int.class || targetType == Integer.class) {
             return Integer.parseInt(value);
