@@ -139,13 +139,9 @@ public class FrontControllerServlet extends HttpServlet {
 
             if (parameterTypes.length == 0) {
                 result = mapping.getMethode().invoke(instance);
-            } else if (parameterTypes.length == 1 && parameterTypes[0].isAssignableFrom(springContext.getClass())) {
-                result = mapping.getMethode().invoke(instance, springContext);
             } else {
-                out.println("La méthode " + mapping.getMethode().getName() +
-                        " de la classe " + mapping.getClasse().getName() +
-                        " a des paramètres non supportés.");
-                return;
+                Object[] args = getArgs(springContext, parameterTypes, req);
+                result = mapping.getMethode().invoke(instance, args);
             }
             if (mapping.getMethode().isAnnotationPresent(WebApi.class)) {
 
@@ -182,5 +178,52 @@ public class FrontControllerServlet extends HttpServlet {
             e.printStackTrace();
             out.println("Erreur lors du traitement de la requête : " + e.getMessage());
         }
+    }
+
+    private Object[] getArgs(ApplicationContext springContext , Class<?>[] parameterTypes , HttpServletRequest req){
+        Enumeration<String> parameterNames = req.getParameterNames();
+        List<Object> args = new ArrayList<>();
+
+        for (Class<?> parameterType : parameterTypes) {
+            if (parameterType == ApplicationContext.class) {
+                args.add(springContext);
+            } else {
+                boolean found = false;
+                while (parameterNames.hasMoreElements()) {
+                    String paramName = parameterNames.nextElement();
+                    String paramValue = req.getParameter(paramName);
+                    if (paramValue != null) {
+                        Object convertedValue = convertParameter(paramValue, parameterType, springContext);
+                        if (convertedValue != null) {
+                            args.add(convertedValue);
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                if (!found) {
+                    args.add(null);
+                }
+            }
+        }
+
+        return args.toArray();
+    }
+
+    private Object convertParameter(String value, Class<?> targetType , ApplicationContext springContext) {
+        if (targetType == ApplicationContext.class) {
+            return springContext;
+        } else if (targetType == String.class) {
+            return value;
+        } else if (targetType == int.class || targetType == Integer.class) {
+            return Integer.parseInt(value);
+        } else if (targetType == long.class || targetType == Long.class) {
+            return Long.parseLong(value);
+        } else if (targetType == double.class || targetType == Double.class) {
+            return Double.parseDouble(value);
+        } else if (targetType == boolean.class || targetType == Boolean.class) {
+            return Boolean.parseBoolean(value);
+        }
+        return null;
     }
 }
