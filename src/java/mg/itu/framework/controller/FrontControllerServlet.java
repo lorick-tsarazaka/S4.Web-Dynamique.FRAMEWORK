@@ -1,6 +1,7 @@
 package mg.itu.framework.controller;
 
 import java.io.*;
+import java.lang.reflect.Parameter;
 import java.util.*;
 
 import jakarta.servlet.*;
@@ -14,6 +15,9 @@ import mg.itu.framework.model.UrlMethod;
 import mg.itu.framework.model.ModelAndView;
 import mg.itu.framework.annotation.WebApi;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import mg.itu.framework.annotation.ObjectArg;
+
+import mg.itu.framework.util.BindingUtil;
 
 @Controller
 public class FrontControllerServlet extends HttpServlet {
@@ -134,19 +138,15 @@ public class FrontControllerServlet extends HttpServlet {
         try {
             Object instance = mapping.getClasse().getDeclaredConstructor().newInstance();
 
-            Class<?>[] parameterTypes = mapping.getMethode().getParameterTypes();
+            Parameter[] parameters = mapping.getMethode().getParameters();  
             Object result;
 
-            if (parameterTypes.length == 0) {
+            if (parameters.length == 0) {
                 result = mapping.getMethode().invoke(instance);
-            } else if (parameterTypes.length == 1 && parameterTypes[0].isAssignableFrom(springContext.getClass())) {
-                result = mapping.getMethode().invoke(instance, springContext);
             } else {
-                out.println("La méthode " + mapping.getMethode().getName() +
-                        " de la classe " + mapping.getClasse().getName() +
-                        " a des paramètres non supportés.");
-                return;
-            }
+                Object[] args = getArgs(springContext, parameters, req);
+                result = mapping.getMethode().invoke(instance, args);
+            } 
             if (mapping.getMethode().isAnnotationPresent(WebApi.class)) {
 
                 res.setContentType("application/json");
@@ -182,5 +182,25 @@ public class FrontControllerServlet extends HttpServlet {
             e.printStackTrace();
             out.println("Erreur lors du traitement de la requête : " + e.getMessage());
         }
+    }
+
+    private Object[] getArgs(ApplicationContext springContext, Parameter[] parameters, HttpServletRequest req) throws Exception {
+        Object[] args = new Object[parameters.length];
+
+        for (int i = 0; i < parameters.length; i++) {
+            Parameter parameter = parameters[i];
+            Class<?> parameterType = parameter.getType();
+
+            if (parameterType == ApplicationContext.class) {
+                args[i] = springContext;
+            } else if (parameter.isAnnotationPresent(ObjectArg.class)) {
+                args[i] = BindingUtil.buildObject(parameter.getName(), parameterType, req);
+            } else {
+                String value = req.getParameter(parameter.getName());
+                args[i] = BindingUtil.convertParameter(value, parameterType);
+            }
+        }
+
+        return args;
     }
 }
