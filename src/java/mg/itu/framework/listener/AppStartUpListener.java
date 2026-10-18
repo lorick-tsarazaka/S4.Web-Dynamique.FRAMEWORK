@@ -34,6 +34,7 @@ public class AppStartUpListener implements ServletContextListener {
             String packageName = context.getInitParameter("packageNames");
             String prefix = context.getInitParameter("prefix");
             String suffix = context.getInitParameter("suffix");
+            String pathFile = context.getInitParameter("pathFile") != null ? context.getInitParameter("pathFile") : "/";
 
             if (packageName == null || packageName.trim().isEmpty()) {
                 throw new RuntimeException("Le context-param 'packageNames' est introuvable dans web.xml.");
@@ -52,6 +53,7 @@ public class AppStartUpListener implements ServletContextListener {
             context.setAttribute("listUrlMapping", listUrlMapping);
             context.setAttribute("prefix", prefix);
             context.setAttribute("suffix", suffix);
+            context.setAttribute("pathFile", pathFile);
             context.setAttribute("springContext", springContext);
 
         } catch (Exception e) {

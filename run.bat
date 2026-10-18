@@ -37,7 +37,7 @@ subst B: "%CD%" >nul 2>&1
 
 dir /s /b "B:\%SRC_DIR%\*.java" > "%TEMP%\sources.txt"
 
-javac -cp "B:\%LIB%\*" -d "B:\%CLASSES_DIR%" @"%TEMP%\sources.txt"
+javac -parameters -cp "B:\%LIB%\*" -d "B:\%CLASSES_DIR%" @"%TEMP%\sources.txt"
 
 set "RESULT=%ERRORLEVEL%"
 
