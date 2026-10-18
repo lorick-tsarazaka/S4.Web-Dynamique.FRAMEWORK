@@ -40,7 +40,7 @@ for pkg in $PACKAGES; do
     pkg_dir="$SRC_DIR/java/$pkg"
     if [ -d "$pkg_dir" ] && ls "$pkg_dir/"*.java 2>/dev/null >/dev/null; then
         printf "  Compiling package: %s\n" "$pkg"
-        if (cd "$pkg_dir" && javac -cp "$CP" -d "$CLASSES_DIR" *.java); then
+        if (cd "$pkg_dir" && javac -parameters -cp "$CP" -d "$CLASSES_DIR" *.java); then
             echo "    OK"
         else
             echo "    ERROR: Compilation failed for package $pkg" >&2

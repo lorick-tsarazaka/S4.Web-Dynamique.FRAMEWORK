@@ -5,27 +5,31 @@ import java.lang.reflect.Parameter;
 import java.util.*;
 
 import jakarta.servlet.*;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.*;
 
 import org.springframework.context.ApplicationContext;
 
 import mg.itu.framework.annotation.Controller;
+import mg.itu.framework.model.MapFile;
 import mg.itu.framework.model.MethodClassMapping;
 import mg.itu.framework.model.UrlMethod;
 import mg.itu.framework.model.ModelAndView;
 import mg.itu.framework.annotation.WebApi;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import mg.itu.framework.annotation.ObjectArg;
 
 import mg.itu.framework.util.BindingUtil;
+import mg.itu.framework.util.UploadUtil;
 
 @Controller
+@MultipartConfig
 public class FrontControllerServlet extends HttpServlet {
 
     private List<String> listController = new ArrayList<>();
     private Map<UrlMethod, MethodClassMapping> listUrlMapping = new HashMap<>();
     private String prefix;
     private String suffix;
+    private String pathFile;
     private ApplicationContext springContext;
 
     @Override
@@ -36,6 +40,7 @@ public class FrontControllerServlet extends HttpServlet {
 
             this.prefix = (String) context.getAttribute("prefix");
             this.suffix = (String) context.getAttribute("suffix");
+            this.pathFile = (String) context.getAttribute("pathFile");
             this.springContext = (ApplicationContext) context.getAttribute("springContext");
 
             List<String> controllersFromContext = (List<String>) context.getAttribute("listController");
@@ -59,6 +64,10 @@ public class FrontControllerServlet extends HttpServlet {
 
     public String getSuffix() {
         return suffix;
+    }
+
+    public String getPathFile(){
+        return pathFile;
     }
 
     @Override
@@ -193,11 +202,18 @@ public class FrontControllerServlet extends HttpServlet {
 
             if (parameterType == ApplicationContext.class) {
                 args[i] = springContext;
-            } else if (parameter.isAnnotationPresent(ObjectArg.class)) {
-                args[i] = BindingUtil.buildObject(parameter.getName(), parameterType, req);
-            } else {
-                String value = req.getParameter(parameter.getName());
-                args[i] = BindingUtil.convertParameter(value, parameterType);
+            } else if (BindingUtil.checkParameter(parameter.getName() + BindingUtil.sep , req)) {
+                args[i] = BindingUtil.buildObject(
+                        parameter.getName(), parameterType, req, BindingUtil.sep, pathFile);
+            } else { 
+                if (parameterType == MapFile.class){
+                    args[i] = UploadUtil.buildFile(req, parameter.getName(), pathFile);
+                } else if (parameterType == MapFile[].class) {
+                    args[i] = UploadUtil.buildFile(req, parameter.getName(), pathFile, true);
+                } else {
+                    String value = req.getParameter(parameter.getName());
+                    args[i] = BindingUtil.convertParameter(value, parameterType);
+                }
             }
         }
 
