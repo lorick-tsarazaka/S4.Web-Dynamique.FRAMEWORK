@@ -1,121 +1,147 @@
 package mg.itu.framework.util;
 
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 
 import jakarta.servlet.http.HttpServletRequest;
 
 import java.lang.reflect.Field;
+import mg.itu.framework.model.MapFile;
 
 public class BindingUtil {
-    private static String sep = ".";
+    public static String sep = ".";
 
-    public static Map<String, Class<?>> getObjectParameters(String parameterName, Class<?> classe, String separation) {
-        return getAttributTypes(parameterName, classe, separation);
+    public static Map<String, Class<?>> getObjectParameters(String parameterName, Class<?> classe, String separation , HttpServletRequest req) {
+        return getAttributTypes(parameterName, classe, separation, req);
     }
 
-    public static Map<String, Class<?>> getObjectParameters(String parameterName, Class<?> classe) {
-        return getObjectParameters(parameterName, classe, sep);
+    public static Map<String, Class<?>> getObjectParameters(String parameterName, Class<?> classe , HttpServletRequest req) {
+        return getObjectParameters(parameterName, classe, sep, req);
     }
 
-    public static boolean isSimpleType(Class<?> type) {
-        return type.isPrimitive()
-                || type.isEnum()
-                || type.equals(String.class)
-                || Number.class.isAssignableFrom(type)
-                || type.equals(Boolean.class)
-                || type.equals(Character.class)
-                || java.util.Date.class.isAssignableFrom(type)
-                || java.time.temporal.Temporal.class.isAssignableFrom(type)
-                || type.equals(java.util.UUID.class);
-    }
-
-    public static Map<String, Class<?>> getAttributTypes(String prefix, Class<?> classe, String separation) {
+    public static Map<String, Class<?>> getAttributTypes(String prefix, Class<?> classe, String separation , HttpServletRequest req) {
         Map<String, Class<?>> parameters = new HashMap<>();
         if (classe == null || classe == Object.class) {
             return parameters;
-        }
+        } 
 
         for (Field field : classe.getDeclaredFields()) {
             String name = prefix + separation + field.getName();
             Class<?> type = field.getType();
 
-            if (isSimpleType(type)) {
+            if (!checkParameter(name + separation, req)) {
                 parameters.put(name, type);
             } else {
                 parameters.putAll(
-                    getAttributTypes(name, type, separation)
+                    getAttributTypes(name, type, separation, req)
                 );
             }
         }
 
         // Récupérer les attributs des classes parentes
         parameters.putAll(
-            getAttributTypes(prefix, classe.getSuperclass(), separation)
+            getAttributTypes(prefix, classe.getSuperclass(), separation, req)
         );
 
         return parameters;
     }
 
-    public static void printObjectParameters(
-            String parameterName, Class<?> classe) {
-
-        Map<String, Class<?>> parameters =
-                getObjectParameters(parameterName, classe);
-
-        for (Map.Entry<String, Class<?>> entry : parameters.entrySet()) {
-            System.out.println(
-                entry.getKey() + " (" +
-                entry.getValue().getSimpleName() + ")"
-            );
-        }
-    }
-
     public static Object buildObject(String parameterName, Class<?> classe, HttpServletRequest req) throws Exception{
-        return buildObject(parameterName, classe, req , sep);
+        return buildObject(parameterName, classe, req, sep, null);
     }
 
-    public  static  Object buildObject(String parameterName, Class<?> classe, HttpServletRequest req , String separation) throws Exception {
+    public static Object buildObject(String parameterName, Class<?> classe, HttpServletRequest req, String separation) throws Exception {
+        return buildObject(parameterName, classe, req, separation, null);
+    }
+
+    public static Object buildObject(String parameterName, Class<?> classe,
+            HttpServletRequest req, String separation, String pathFile) throws Exception {
         Object object = classe.getDeclaredConstructor().newInstance();
-        Map<String, Class<?>> parameters = getObjectParameters(parameterName, classe);
+        Map<String, Class<?>> parameters = getObjectParameters(parameterName, classe, separation, req);
 
         for (Map.Entry<String, Class<?>> entry : parameters.entrySet()) {
             String name = entry.getKey();
             Class<?> type = entry.getValue();
             String value = req.getParameter(name);
 
-            if (value == null || value.isEmpty()) {
+            if (type != MapFile.class && type != MapFile[].class
+                    && (value == null || value.isEmpty())) {
                 continue;
             }
 
-            String[] attributes = name.substring(parameterName.length() + 1).split(separation);
+            String prefix = parameterName + separation;
+            if (!name.startsWith(prefix)) {
+                continue;
+            }
+
+            String path = name.substring(prefix.length());
+            if (path.isEmpty()) {
+                continue;
+            }
+
+
+            String[] attributes = path.split(java.util.regex.Pattern.quote(separation));
+            if (attributes.length == 0) {
+                continue;
+            }
+
             Object currentObject = object;
             Class<?> currentClass = classe;
 
-            // Parcourir les objets imbriqués
+            // Parcourir les attributs Objects
             for (int i = 0; i < attributes.length - 1; i++) {
                 Field field = findField(currentClass, attributes[i]);
                 field.setAccessible(true);
-                Object nestedObject = field.get(currentObject);
 
-                if (nestedObject == null) {
-                    nestedObject = field.getType().getDeclaredConstructor().newInstance();
-                    field.set(currentObject, nestedObject);
+                Object attributObject = field.get(currentObject);
+
+                if (attributObject == null) {
+                    attributObject = field.getType().getDeclaredConstructor().newInstance();
+                    field.set(currentObject, attributObject);
                 }
 
-                currentObject = nestedObject;
+                currentObject = attributObject;
                 currentClass = field.getType();
             }
 
             // Affecter la valeur au dernier attribut
             String lastAttribute = attributes[attributes.length - 1];
+
             Field field = findField(currentClass, lastAttribute);
             field.setAccessible(true);
 
-            field.set(currentObject, convertParameter(value, type));
+            Object convertedValue;
+            if (type == MapFile.class) {
+                convertedValue = UploadUtil.buildFile(req, name, pathFile);
+
+                if (convertedValue == null) {
+                    continue;
+                }
+            } else if (type == MapFile[].class) {
+                convertedValue = UploadUtil.buildFile(req, name, pathFile, true);
+            } else {
+                convertedValue = convertParameter(value, type);
+            }
+
+            field.set(currentObject, convertedValue);
         }
 
         return object;
+    }
+
+    public static boolean checkParameter(String parameterName, HttpServletRequest req) {
+        Enumeration<String> names = req.getParameterNames();
+
+        while (names.hasMoreElements()) {
+            String name = names.nextElement();
+
+            if (name.startsWith(parameterName)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static Field findField(Class<?> classe, String name) throws NoSuchFieldException {
