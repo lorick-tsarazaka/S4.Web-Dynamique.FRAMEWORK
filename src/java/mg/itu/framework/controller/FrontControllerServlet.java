@@ -15,10 +15,12 @@ import mg.itu.framework.model.MapFile;
 import mg.itu.framework.model.MethodClassMapping;
 import mg.itu.framework.model.UrlMethod;
 import mg.itu.framework.model.ModelAndView;
+import mg.itu.framework.model.MapSession;
 import mg.itu.framework.annotation.WebApi;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import mg.itu.framework.util.BindingUtil;
+import mg.itu.framework.util.SessionUtil;
 import mg.itu.framework.util.UploadUtil;
 
 @Controller
@@ -31,6 +33,7 @@ public class FrontControllerServlet extends HttpServlet {
     private String suffix;
     private String pathFile;
     private ApplicationContext springContext;
+
 
     @Override
     @SuppressWarnings("unchecked")
@@ -155,6 +158,9 @@ public class FrontControllerServlet extends HttpServlet {
             } else {
                 Object[] args = getArgs(springContext, parameters, req);
                 result = mapping.getMethode().invoke(instance, args);
+                if (SessionUtil.verifyMapSessionObject(req, args)) {
+                    SessionUtil.rectifySession(req, SessionUtil.getMapSessionContext(req));
+                }
             } 
             if (mapping.getMethode().isAnnotationPresent(WebApi.class)) {
 
@@ -203,13 +209,15 @@ public class FrontControllerServlet extends HttpServlet {
             if (parameterType == ApplicationContext.class) {
                 args[i] = springContext;
             } else if (BindingUtil.checkParameter(parameter.getName() + BindingUtil.sep , req)) {
-                args[i] = BindingUtil.buildObject(
-                        parameter.getName(), parameterType, req, BindingUtil.sep, pathFile);
+                args[i] = BindingUtil.buildObject(parameter.getName(), parameterType, req, BindingUtil.sep, pathFile);
             } else { 
                 if (parameterType == MapFile.class){
                     args[i] = UploadUtil.buildFile(req, parameter.getName(), pathFile);
                 } else if (parameterType == MapFile[].class) {
                     args[i] = UploadUtil.buildFile(req, parameter.getName(), pathFile, true);
+                } else if (parameterType == MapSession.class) {
+                    SessionUtil.setMapSession(req, SessionUtil.getMapSessionContext(req));
+                    args[i] = SessionUtil.getMapSessionContext(req);
                 } else {
                     String value = req.getParameter(parameter.getName());
                     args[i] = BindingUtil.convertParameter(value, parameterType);
