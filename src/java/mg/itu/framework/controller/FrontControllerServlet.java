@@ -17,6 +17,7 @@ import mg.itu.framework.model.UrlMethod;
 import mg.itu.framework.model.ModelAndView;
 import mg.itu.framework.model.MapSession;
 import mg.itu.framework.annotation.WebApi;
+import mg.itu.framework.annotation.Auth;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import mg.itu.framework.util.BindingUtil;
@@ -152,7 +153,22 @@ public class FrontControllerServlet extends HttpServlet {
 
             Parameter[] parameters = mapping.getMethode().getParameters();  
             Object result;
+            MapSession mapSession = SessionUtil.getMapSessionContext(req);
+            Object sessionAuth = null;
+            if (mapSession != null) {
+                String sessionAuthKey = (String) req.getServletContext().getAttribute("sessionAuth");
+                if (sessionAuthKey != null) {
+                    sessionAuth = mapSession.get(sessionAuthKey);
+                }
+            }
 
+            if (mapping.getMethode().isAnnotationPresent(Auth.class) && sessionAuth == null) {
+                res.setContentType("text/html");
+                res.setCharacterEncoding("UTF-8");
+                out.println("<p>Cette methode exige une authentification</p>");
+                return;
+            }
+            
             if (parameters.length == 0) {
                 result = mapping.getMethode().invoke(instance);
             } else {

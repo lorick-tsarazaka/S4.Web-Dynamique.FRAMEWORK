@@ -34,6 +34,7 @@ public class AppStartUpListener implements ServletContextListener {
             String packageName = context.getInitParameter("packageNames");
             String prefix = context.getInitParameter("prefix");
             String suffix = context.getInitParameter("suffix");
+            String sessionAuth = context.getInitParameter("sessionAuth");
             String pathFile = context.getInitParameter("pathFile") != null ? context.getInitParameter("pathFile") : "/";
 
             if (packageName == null || packageName.trim().isEmpty()) {
@@ -55,6 +56,7 @@ public class AppStartUpListener implements ServletContextListener {
             context.setAttribute("suffix", suffix);
             context.setAttribute("pathFile", pathFile);
             context.setAttribute("springContext", springContext);
+            context.setAttribute("sessionAuth", sessionAuth);
 
         } catch (Exception e) {
             throw new RuntimeException(e);
