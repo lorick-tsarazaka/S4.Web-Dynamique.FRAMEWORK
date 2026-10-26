@@ -20,6 +20,7 @@ import mg.itu.framework.annotation.WebApi;
 import mg.itu.framework.annotation.Auth;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import mg.itu.framework.util.AuthUtil;
 import mg.itu.framework.util.BindingUtil;
 import mg.itu.framework.util.SessionUtil;
 import mg.itu.framework.util.UploadUtil;
@@ -34,6 +35,8 @@ public class FrontControllerServlet extends HttpServlet {
     private String suffix;
     private String pathFile;
     private ApplicationContext springContext;
+    private String sessionAuthKey;
+    private String roleAuthKey;
 
 
     @Override
@@ -45,6 +48,8 @@ public class FrontControllerServlet extends HttpServlet {
             this.prefix = (String) context.getAttribute("prefix");
             this.suffix = (String) context.getAttribute("suffix");
             this.pathFile = (String) context.getAttribute("pathFile");
+            this.roleAuthKey = (String) context.getAttribute("roleAuth");
+            this.sessionAuthKey = (String) context.getAttribute("sessionAuth");
             this.springContext = (ApplicationContext) context.getAttribute("springContext");
 
             List<String> controllersFromContext = (List<String>) context.getAttribute("listController");
@@ -72,6 +77,10 @@ public class FrontControllerServlet extends HttpServlet {
 
     public String getPathFile(){
         return pathFile;
+    }
+
+    public String getSessionAuthKey() {
+        return sessionAuthKey;
     }
 
     @Override
@@ -155,18 +164,31 @@ public class FrontControllerServlet extends HttpServlet {
             Object result;
             MapSession mapSession = SessionUtil.getMapSessionContext(req);
             Object sessionAuth = null;
+            Object roleAuth = null;
+
             if (mapSession != null) {
-                String sessionAuthKey = (String) req.getServletContext().getAttribute("sessionAuth");
                 if (sessionAuthKey != null) {
                     sessionAuth = mapSession.get(sessionAuthKey);
                 }
+                if (roleAuthKey != null) {
+                    roleAuth = mapSession.get(roleAuthKey);
+                }
             }
-
-            if (mapping.getMethode().isAnnotationPresent(Auth.class) && sessionAuth == null) {
-                res.setContentType("text/html");
-                res.setCharacterEncoding("UTF-8");
-                out.println("<p>Cette methode exige une authentification</p>");
-                return;
+     
+            if (mapping.getMethode().isAnnotationPresent(Auth.class)){
+                Auth authAnnotation = mapping.getMethode().getAnnotation(Auth.class);
+                String roleNames = authAnnotation.role();
+                if (sessionAuth == null) {
+                    res.setContentType("text/html");
+                    res.setCharacterEncoding("UTF-8");
+                    out.println("<p>Cette methode exige une authentification</p>");
+                    return;
+                } else if (!AuthUtil.verifyRoleAccess(roleAuth, roleNames)) {
+                    res.setContentType("text/html");
+                    res.setCharacterEncoding("UTF-8");
+                    out.println("<p>Vous n'avez pas le role requis pour acceder a cette methode.</p>");
+                    return;
+                }
             }
             
             if (parameters.length == 0) {
