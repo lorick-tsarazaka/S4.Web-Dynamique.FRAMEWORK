@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import mg.itu.framework.util.AuthUtil;
 import mg.itu.framework.util.BindingUtil;
+import mg.itu.framework.util.ControllerUtil;
 import mg.itu.framework.util.SessionUtil;
 import mg.itu.framework.util.UploadUtil;
 
@@ -111,7 +112,6 @@ public class FrontControllerServlet extends HttpServlet {
             PrintWriter out = res.getWriter();
 
             out.println("URL : " + path + "<br>");
-
             out.println("Aucune correspondance trouvée pour l'URL : "
                     + path + "<br>");
 
@@ -128,15 +128,11 @@ public class FrontControllerServlet extends HttpServlet {
                 out.println("<tr><td>"
                         + url.getUrl()
                         + " (" + url.getMethod() + ")</td><td>");
-
                 out.println(m.getClasse().getName() + "</td><td>");
-
                 out.println(m.getMethode().getName()
                         + "</td></tr>");
             }
-
             out.println("</table>");
-
             out.println("<br>Liste des classes contrôleurs : <br>");
 
             for (String controller : listController) {
@@ -158,7 +154,6 @@ public class FrontControllerServlet extends HttpServlet {
     private void invokeMethod(MethodClassMapping mapping, HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
         PrintWriter out = res.getWriter();
         try {
-            Object instance = mapping.getClasse().getDeclaredConstructor().newInstance();
 
             Parameter[] parameters = mapping.getMethode().getParameters();  
             Object result;
@@ -192,10 +187,12 @@ public class FrontControllerServlet extends HttpServlet {
             }
             
             if (parameters.length == 0) {
-                result = mapping.getMethode().invoke(instance);
+                System.out.println("Instance : " + ControllerUtil.getInstance(mapping , req));
+                result = mapping.getMethode().invoke(ControllerUtil.getInstance(mapping , req));
             } else {
                 Object[] args = getArgs(springContext, parameters, req);
-                result = mapping.getMethode().invoke(instance, args);
+                System.out.println("Instance : " + ControllerUtil.getInstance(mapping , req));
+                result = mapping.getMethode().invoke(ControllerUtil.getInstance(mapping , req), args);
                 if (SessionUtil.verifyMapSessionObject(req, args)) {
                     SessionUtil.rectifySession(req, SessionUtil.getMapSessionContext(req));
                 }
